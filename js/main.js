@@ -1,28 +1,58 @@
-/* Ackerman Communications: mobile menu, a gentle fade-in, and the contact form. No dependencies. */
+/* Ackerman Communications: menu, dropdowns, a gentle fade-in, and the contact form. No dependencies. */
 (function () {
   "use strict";
 
-  // Where the contact form sends. Set one of these to connect it:
-  // formEndpoint: a form service URL (Formspree, Basin or your own), email: opens the visitor's mail app.
+  // Where the contact forms send. Set one of these to connect them:
+  // formEndpoint: a form service URL (Formspree, Basin or your own; also add its host to connect-src in vercel.json),
+  // email: opens the visitor's mail app.
   var CONTACT = { formEndpoint: "", email: "" };
 
   var $ = function (s, c) { return (c || document).querySelector(s); };
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
 
   /* Mobile menu */
   var menu = $(".top__menu");
   var nav = $("#nav");
+  function setMenu(open) {
+    nav.classList.toggle("is-open", open);
+    menu.setAttribute("aria-expanded", open ? "true" : "false");
+    menu.textContent = open ? "Close" : "Menu";
+  }
   if (menu && nav) {
-    var setOpen = function (open) {
-      nav.classList.toggle("is-open", open);
-      menu.setAttribute("aria-expanded", open ? "true" : "false");
-      menu.textContent = open ? "Close" : "Menu";
-    };
-    menu.addEventListener("click", function () { setOpen(!nav.classList.contains("is-open")); });
-    nav.addEventListener("click", function (e) { if (e.target.closest("a")) setOpen(false); });
+    menu.addEventListener("click", function () { setMenu(!nav.classList.contains("is-open")); });
+    nav.addEventListener("click", function (e) { if (e.target.closest("a")) setMenu(false); });
   }
 
+  /* Dropdowns: click or keyboard everywhere, and hover with a mouse (in the stylesheet) */
+  var drops = $$(".dd");
+  function closeDrops(except) {
+    drops.forEach(function (d) {
+      if (d !== except) {
+        d.classList.remove("is-open");
+        $(".dd__btn", d).setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+  drops.forEach(function (d) {
+    var b = $(".dd__btn", d);
+    b.addEventListener("click", function () {
+      var open = !d.classList.contains("is-open");
+      closeDrops(d);
+      d.classList.toggle("is-open", open);
+      b.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".dd")) closeDrops(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var openDrop = $(".dd.is-open");
+    closeDrops();
+    if (openDrop) $(".dd__btn", openDrop).focus();
+    else if (nav && nav.classList.contains("is-open")) { setMenu(false); menu.focus(); }
+  });
+
   /* Fade content in once, a little before it reaches the reader, so nothing is ever waiting */
-  var fades = document.querySelectorAll(".fade");
+  var fades = $$(".fade");
   if ("IntersectionObserver" in window && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
@@ -40,9 +70,8 @@
   var year = $("[data-year]");
   if (year) year.textContent = new Date().getFullYear();
 
-  /* Contact form */
-  var form = $("#contact-form");
-  if (form) {
+  /* Contact forms */
+  $$(".contact-form").forEach(function (form) {
     var note = $(".form__note", form);
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -75,5 +104,5 @@
         note.classList.add("is-err");
       }
     });
-  }
+  });
 })();
