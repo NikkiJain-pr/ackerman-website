@@ -10,8 +10,11 @@ const UPDATED = "November 2026";
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&rsquo;");
 const HEIGHTS = { brick: 409, tower: 506, news: 596, lighthouse: 588, voice: 675, work: 601, london: 601, marking: 601 };
-const img = (name, alt, sizes, eager = false) =>
+const rawImg = (name, alt, sizes, eager) =>
   `<img src="/assets/img/${name}-900.webp" srcset="/assets/img/${name}-900.webp 900w, /assets/img/${name}-1800.webp 1800w" sizes="${sizes}" width="900" height="${HEIGHTS[name] || 600}" alt="${esc(alt)}"${eager ? ' fetchpriority="high"' : ' loading="lazy"'}>`;
+// Every photo sits in a box that handles its reveal and hover zoom. Parallax adds one inner layer.
+const img = (name, alt, sizes, eager = false, parallax = false) =>
+  `<span class="imgbox">${parallax ? `<span class="pl">${rawImg(name, alt, sizes, eager)}</span>` : rawImg(name, alt, sizes, eager)}</span>`;
 
 const COMPANY = [["About us", "/about"], ["Why Ackerman", "/why-ackerman"], ["Our approach", "/approach"], ["How we work", "/how-we-work"], ["FAQ", "/faq"]];
 const LEGAL = [["Privacy policy", "/privacy"], ["Terms of use", "/terms"], ["Cookies", "/cookies"], ["Accessibility", "/accessibility"]];
@@ -135,7 +138,7 @@ ${FOOTER}
 const pageHead = (eyebrow, h1, lede) => `<section class="ph">
     <div class="wrap">
       <p class="eyebrow">${eyebrow}</p>
-      <h1>${h1}</h1>
+      <h1 data-words>${h1}</h1>
       ${lede ? `<p class="lede">${lede}</p>` : ""}
     </div>
   </section>`;
@@ -147,8 +150,8 @@ const approachGrid = `<div class="approach__grid">
       </div>`;
 const articleCard = (a, _i, _all, level = 3) => `<article class="card fade"><a href="/insights/${a.slug}">${img(a.image, a.alt, "(max-width: 800px) 100vw, 33vw")}<h${level}>${esc(a.title)}</h${level}><p>${esc(a.summary)}</p><span class="more">Read article</span></a></article>`;
 const reachGrid = `<div class="reach__grid">
-        <figure class="fade">${img("nyc", "The Manhattan skyline at dusk, seen across the East River", "(max-width: 700px) 100vw, 50vw")}<figcaption>United States</figcaption></figure>
-        <figure class="fade">${img("london", "Tower Bridge in London at dusk", "(max-width: 700px) 100vw, 50vw")}<figcaption>United Kingdom</figcaption></figure>
+        <figure class="fade">${img("nyc", "The Manhattan skyline at dusk, seen across the East River", "(max-width: 700px) 100vw, 50vw", false, true)}<figcaption>United States</figcaption></figure>
+        <figure class="fade">${img("london", "Tower Bridge in London at dusk", "(max-width: 700px) 100vw, 50vw", false, true)}<figcaption>United Kingdom</figcaption></figure>
       </div>`;
 
 /* Home */
@@ -160,7 +163,7 @@ page({
     <div class="wrap hero__in">
       <div class="hero__text">
         <p class="eyebrow">Strategic communications &amp; PR &middot; USA &amp; UK</p>
-        <h1>Your reputation is working before you ever enter <em>the room.</em></h1>
+        <h1 data-words>Your reputation is working before you ever enter <em>the room.</em></h1>
         <p class="lede">${LINE}</p>
         <div class="hero__cta">
           <a class="btn" href="/contact">Start a conversation</a>
@@ -168,7 +171,7 @@ page({
         </div>
       </div>
       <figure class="hero__img">
-        <img src="/assets/img/room-1800.webp" srcset="/assets/img/room-900.webp 900w, /assets/img/room-1800.webp 1800w" sizes="(max-width: 960px) 100vw, 50vw" width="1800" height="1200" alt="A bright, empty boardroom with a long table and tall windows" fetchpriority="high">
+<span class="imgbox"><span class="pl"><img src="/assets/img/room-1800.webp" srcset="/assets/img/room-900.webp 900w, /assets/img/room-1800.webp 1800w" sizes="(max-width: 960px) 100vw, 50vw" width="1800" height="1200" alt="A bright, empty boardroom with a long table and tall windows" fetchpriority="high"></span></span>
       </figure>
     </div>
   </section>
@@ -176,7 +179,7 @@ page({
   <section class="belief">
     <div class="wrap wrap--narrow fade">
       <p class="eyebrow">What we believe</p>
-      <p class="belief__text">We believe PR should do more than generate media mentions. It should strengthen credibility, shape perception, position leaders as trusted voices, and create meaningful visibility around the moments that matter.</p>
+      <p class="belief__text" data-words>We believe PR should do more than generate media mentions. It should strengthen credibility, shape perception, position leaders as trusted voices, and create meaningful visibility around the moments that matter.</p>
     </div>
   </section>
 
@@ -380,7 +383,7 @@ CAPABILITIES.forEach((c, i) => {
     <div class="wrap ph__in">
       <div>
         <p class="eyebrow">${c.pillar === "Protect" ? "Protect your reputation" : c.pillar === "Authority" ? "Build authority" : "Earn visibility"}</p>
-        <h1>${esc(c.name)}</h1>
+        <h1 data-words>${esc(c.name)}</h1>
         <p class="lede">${esc(c.intro)}</p>
         <a class="btn ph__btn" href="/contact">Talk to us about this</a>
       </div>
@@ -416,10 +419,11 @@ ARTICLES.forEach((a) => {
   page({
     route: `/insights/${a.slug}`, title: a.title, current: "insights", crumbs: [["Insights", "/insights"], [a.title]], desc: a.summary,
     jsonld: [{ "@context": "https://schema.org", "@type": "Article", headline: a.title, description: a.summary, publisher: { "@type": "Organization", name: "Ackerman Communications" }, author: { "@type": "Organization", name: "Ackerman Communications" } }],
-    body: `<article class="article">
+    body: `<div class="progress" aria-hidden="true"><i></i></div>
+  <article class="article">
     <header class="wrap wrap--read article__head">
       <p class="eyebrow">Insights</p>
-      <h1>${esc(a.title)}</h1>
+      <h1 data-words>${esc(a.title)}</h1>
       <p class="lede">${esc(a.summary)}</p>
     </header>
     <figure class="wrap article__img">${img(a.image, a.alt, "(max-width: 1280px) 100vw, 1200px", true)}</figure>
@@ -453,7 +457,7 @@ page({
     <div class="wrap contact__in">
       <div class="contact__ask">
         <p class="eyebrow eyebrow--light">Contact</p>
-        <h1>Have something important to say?</h1>
+        <h1 data-words>Have something important to say?</h1>
         <p>Let&rsquo;s make sure the right audience hears it, and understands why it matters.</p>
         <dl class="contact__facts">
           <div><dt>Where we work</dt><dd>USA and UK</dd></div>
@@ -520,7 +524,7 @@ page({
   body: `<section class="ph ph--404">
     <div class="wrap">
       <p class="eyebrow">Page not found</p>
-      <h1>That page isn&rsquo;t in <em>the room.</em></h1>
+      <h1 data-words>That page isn&rsquo;t in <em>the room.</em></h1>
       <p class="lede">It may have moved, or the link may be out of date.</p>
       <div class="hero__cta"><a class="btn" href="/">Back to home</a><a class="link" href="/capabilities">See our capabilities</a></div>
     </div>

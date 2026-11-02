@@ -51,9 +51,40 @@
     else if (nav && nav.classList.contains("is-open")) { setMenu(false); menu.focus(); }
   });
 
-  /* Fade content in once, a little before it reaches the reader, so nothing is ever waiting */
-  var fades = $$(".fade");
-  if ("IntersectionObserver" in window && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* Split marked headlines into words, keeping the text whole for screen readers and copying */
+  $$("[data-words]").forEach(function (host) {
+    var n = 0;
+    (function walk(node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (c) {
+        if (c.nodeType === 1) return walk(c);
+        if (c.nodeType !== 3) return;
+        var frag = document.createDocumentFragment();
+        c.textContent.split(/(\s+)/).forEach(function (part) {
+          if (!part) return;
+          if (/^\s+$/.test(part)) return frag.appendChild(document.createTextNode(" "));
+          var s = document.createElement("span");
+          s.className = "w";
+          s.textContent = part;
+          s.style.setProperty("--w", Math.min(n++, 34));
+          frag.appendChild(s);
+        });
+        node.replaceChild(frag, c);
+      });
+    })(host);
+    host.classList.add("is-split");
+  });
+
+  /* Stagger neighbours that arrive together, by a small amount */
+  $$(".fade").forEach(function (el) {
+    var i = Array.prototype.indexOf.call(el.parentNode.children, el);
+    if (i > 0) el.style.setProperty("--d", (i % 4) * 0.08 + "s");
+  });
+
+  /* Reveal each piece once as it comes into view */
+  var reveal = $$(".fade, [data-words]");
+  if ("IntersectionObserver" in window && !reduce) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         if (e.isIntersecting) {
@@ -61,11 +92,42 @@
           io.unobserve(e.target);
         }
       });
-    }, { rootMargin: "0px 0px 120px 0px" });
-    fades.forEach(function (el) { io.observe(el); });
+    }, { rootMargin: "0px 0px -6% 0px" });
+    reveal.forEach(function (el) { io.observe(el); });
   } else {
-    fades.forEach(function (el) { el.classList.add("is-seen"); });
+    reveal.forEach(function (el) { el.classList.add("is-seen"); });
   }
+
+  /* Scroll-linked touches: header state, reading progress, and a very slight parallax on large screens */
+  var top = $(".top");
+  var bar = $(".progress i");
+  var pls = !reduce && window.matchMedia("(min-width: 861px)").matches ? $$(".pl") : [];
+  var ticking = false;
+  function onFrame() {
+    ticking = false;
+    var y = window.scrollY, vh = window.innerHeight;
+    if (top) top.classList.toggle("is-scrolled", y > 12);
+    if (bar) {
+      var total = document.documentElement.scrollHeight - vh;
+      bar.style.transform = "scaleX(" + (total > 0 ? Math.min(1, y / total) : 0) + ")";
+    }
+    pls.forEach(function (p) {
+      var r = p.parentNode.getBoundingClientRect();
+      if (r.bottom < -40 || r.top > vh + 40) return;
+      var off = (r.top + r.height / 2 - vh / 2) / vh;
+      p.style.setProperty("--py", (off * -r.height * 0.07).toFixed(1) + "px");
+    });
+  }
+  function onScroll() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(onFrame);
+    }
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+  onFrame();
+  window.__ackReady = true;
 
   var year = $("[data-year]");
   if (year) year.textContent = new Date().getFullYear();
